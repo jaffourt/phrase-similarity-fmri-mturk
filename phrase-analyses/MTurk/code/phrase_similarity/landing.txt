@@ -1,0 +1,10 @@
+                                  var mturk_id = document.getElementById("MTurk_ID").value                                                                                  
+                                    //.php save comparison mturk_id.txt -> [ input_text ]                                                                                     
+                        // form data and then php to save to server                                                                                                          \
+                                                                                                                                                                              
+                                    var data = new FormData();                                                                                                                
+                                    data.append("data" , input_text);                                                                                                         
+                                    data.append("id", mturk_id);                                                                                                              
+                                    var xhr = new XMLHttpRequest();                                                                                                           
+                                    xhr.open( 'post', 'save_id.php', true);                                                                                                   
+                                    xhr.send(data); 

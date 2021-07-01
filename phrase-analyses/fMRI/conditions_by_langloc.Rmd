@@ -1,0 +1,43 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggpubr)
+library(tidyverse)
+library(readxl)
+
+TR3_5_ind <- read.csv("PHRASE_csm_3_5TR/spm_ss_mROI_data.csv")
+TR3_5_avg <- read.csv("PHRASE_csm_3_5TR/spm_ss_mROI_data.summaries.EffectSize.csv")
+#TR1_ind <- read.csv("PHRASE_all_1TR/spm_ss_mROI_data.csv")
+#TR1_avg <- read.csv("PHRASE_all_1TR/spm_ss_mROI_data.summaries.EffectSize.csv")
+TR2_5_ind <- read.csv("PHRASE_csm_2_5TR/spm_ss_mROI_data.csv")
+TR2_5_avg <- read.csv("PHRASE_csm_2_5TR/spm_ss_mROI_data.summaries.EffectSize.csv")
+
+```
+
+
+```{r}
+#ggplot(n1024_SN_data %>% filter(Lateralization=="left-lat", ROI<=6) %>% group_by(Langloc_Version,Effect),aes(color=Effect)) + geom_point(aes(x=Langloc_Version,y=EffectSize),position=position_dodge(width=-.4)) 
+
+#n1024_SN_data %>% filter(Lateralization=="left-lat", ROI<=6) %>% group_by(Langloc_Version,Effect) %>% summarise(mean=mean(EffectSize))
+#n1024_SN_data %>% filter(Lateralization=="left-lat", ROI<=6) %>% group_by(Langloc_Version,Effect)                                       
+
+dots=bind_rows(TR3_5_ind %>% filter(ROI<=6, ! Effect %in% c('EXPOSURE','RESP', 'EXTRA_ISI')) %>% group_by(Subject) %>% summarise(mean_phrase=mean(EffectSize)) %>% add_column(TR='3.5_TR',condition='Phrase'),TR2_5_ind %>% filter(ROI<=6, ! Effect %in% c('EXPOSURE','RESP', 'EXTRA_ISI')) %>% group_by(Subject) %>% summarise(mean_phrase=mean(EffectSize)) %>% add_column(TR='2.5_TR', condition='Phrase'))
+
+dots=bind_rows(dots,bind_rows(TR3_5_ind %>% filter(ROI<=6, Effect == 'RESP') %>% group_by(Subject) %>% summarise(mean_phrase=mean(EffectSize)) %>% add_column(TR='3.5_TR',condition='Other'),TR2_5_ind %>% filter(ROI<=6, Effect == 'RESP') %>% group_by(Subject) %>% summarise(mean_phrase=mean(EffectSize)) %>% add_column(TR='2.5_TR', condition='Other')))
+
+bar=dots %>% group_by(TR, condition) %>% summarise(roi_mean=mean(mean_phrase), se=sd(mean_phrase)/sqrt(length(mean_phrase)))
+bar$condition <- factor(bar$condition, levels= c('Phrase','Other'))
+dots$condition <- factor(dots$condition, levels= c('Phrase','Other'))
+
+fig <- ggplot(bar,aes(fill=condition,x=TR,y=roi_mean)) + geom_bar(position=position_dodge(.9),stat='identity')  + geom_point(data=dots, aes(color=condition,x=TR,y=mean_phrase), position=position_dodge(width=.9)) + geom_errorbar(aes(ymin=roi_mean-se, ymax=roi_mean+se), width=.2, position=position_dodge(.9)) + ggtitle("PhraseSimilarity Phrase Activations") +xlab("Phrase TR") + ylab("BOLD Percent Signal Change")
+ggsave('test2.tiff',fig)
+fig
+
+
+
+
+```
+

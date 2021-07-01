@@ -1,0 +1,92 @@
+---
+title: "Phrase RSA (Gershman & Tenenbaum) analyses"
+output: html_notebook
+---
+
+
+Loading the behavioral data
+```{r}
+library(lme4)
+library(multcomp)
+
+d = read.table('/Users/iblank/Desktop/MIT/Experiments/PhraseSimilarity/BehavioralData/behavioralDataForR.txt', header=TRUE);
+str(d)
+
+dSub = subset(d, stimSet=="set01" | stimSet=="set02" | stimSet=="set14" | stimSet=="set30"); # only stimuli that were used in fMRI experiment
+str(dSub)
+
+dSub01 = subset(d, stimSet=="set01" );
+dSub02 = subset(d, stimSet=="set02" );
+dSub14 = subset(d, stimSet=="set14" );
+dSub30 = subset(d, stimSet=="set30" );
+```
+Build a contrast matrix for testing LMER models below
+```{r}
+conMat = rbind("junk" = matrix(0,1,4));  # will be deleted later
+effectNames = c("adj","meaning","noun","prep");
+rowNameStr = c();
+ind = 1;
+for (i1 in seq(1,3,1)) {
+  for (i2 in seq(i1+1,4,1)) {
+    theStr = paste(effectNames[[i1]],'>',effectNames[[i2]],sep="");
+    rowNameStr = rbind(rowNameStr, theStr);
+    theWeights = c(0,0,0,0);
+    theWeights[[i1]] = 1;
+    theWeights[[i2]] = -1;
+    conMat = rbind(conMat, theWeights);
+  }
+}
+conMat = conMat[-1,]; # remove first row
+row.names(conMat) = rowNameStr;
+```
+
+Modeling the data using LME: all stimuli
+```{r}
+mAll = lmer(ranking ~ 0 + stimType + (stimType|subjID) + (stimType|stimSet), d);
+
+mNoRandStimSet = lmer(ranking ~ 0 + stimType + (stimType|subjID), d);
+anova(mAll,mNoRandStimSet)
+
+mNoRandSubj = lmer(ranking ~ 0 + stimType + (stimType|stimSet), d);
+anova(mAll,mNoRandSubj)
+
+summary(mAll)
+ht = glht(mAll, linfct = conMat)
+summary(ht)
+```
+Modeling the data using LME: subset of stimuli used for fMRI experiment
+```{r}
+mSub = lmer(ranking ~ 0 + stimType + (stimType|subjID) + (stimType|stimSet), dSub);
+
+mNoRandStimSet = lmer(ranking ~ 0 + stimType + (stimType|subjID), dSub);
+anova(mSub,mNoRandStimSet)
+
+mNoRandSubj = lmer(ranking ~ 0 + stimType + (stimType|stimSet), dSub);
+anova(mSub,mNoRandSubj)
+
+summary(mSub)
+ht = glht(mNoRandStimSet, linfct = conMat)  # ANOVA above showed the random effect by stimulus set is not significant
+summary(ht)
+```
+Modeling the data using LME: a single subset of stimuli used for fMRI experiment
+```{r}
+mSub = lm(ranking ~ 0 + stimType, dSub01);
+summary(mSub)
+ht = glht(mSub, linfct = conMat)  # ANOVA above showed the random effect by stimulus set is not significant
+summary(ht)
+
+mSub = lm(ranking ~ 0 + stimType, dSub02);
+summary(mSub)
+ht = glht(mSub, linfct = conMat)  # ANOVA above showed the random effect by stimulus set is not significant
+summary(ht)
+
+mSub = lm(ranking ~ 0 + stimType, dSub14);
+summary(mSub)
+ht = glht(mSub, linfct = conMat)  # ANOVA above showed the random effect by stimulus set is not significant
+summary(ht)
+
+mSub = lm(ranking ~ 0 + stimType, dSub30);
+summary(mSub)
+ht = glht(mSub, linfct = conMat)  # ANOVA above showed the random effect by stimulus set is not significant
+summary(ht)
+```

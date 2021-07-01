@@ -1,0 +1,591 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+		<script type='text/javascript' src='https://s3.amazonaws.com/mturk-public/externalHIT_v1.js'></script>
+		<!-- You must include this JavaScript file -->
+		<script src="https://assets.crowd.aws/crowd-html-elements.js"></script>
+		<script src="https://timbrady.org/turk/TimTurkTools.js"></script>
+
+		<script>
+			var ID = 1
+			var isTurkPrev = IsTurkPreview()
+			//var isTurkPrev = false
+			var thisStudy_HIT='Langspeed_Short'
+			var tester = GetWorkerId()
+			//tester = 'tester'
+
+			$(document).ready(function(){
+			    ShowOnlyTask1();
+			    checkWorkerDB(thisStudy_HIT, funcForBlocked, thisStudy_HIT,0)
+			});
+
+			function ShowOnlyTask1() {
+				//Disable everything
+    			$('button').prop('disabled',true).css('opacity',0.5);
+    			$('input').prop('disabled',true).css('opacity',0.5);
+    			$( "div[id*='group']" ).css('opacity',0.5);
+
+    			//Only turn on what we want
+    			$('#Completion_Code1').prop('disabled',false).css('opacity',1);
+				$('#Next1').prop('disabled',false).css('opacity',1)
+				$('#input1').prop('disabled',false).css('opacity',1);
+				$('#MTurk_ID').prop('disabled',false).css('opacity',1);
+				$('#group'+ID).css('opacity',1);
+
+				ShowDemographics();
+      			
+			}
+
+			function ShowDemographics() {
+				//Demographic questions
+				$('input[name=country]').attr("disabled",false).css('opacity', 1);
+				$('input[name=English]').attr("disabled",false).css('opacity', 1);
+				$('input[name=gender]').attr("disabled",false).css('opacity', 1);
+				$('input[name=ethnicity]').attr("disabled",false).css('opacity', 1);
+				$('input[name=race]').attr("disabled",false).css('opacity', 1);
+				$('input[name=Age]').attr("disabled",false).css('opacity', 1);
+			}
+
+			function showNextTask(){
+				//NextID
+				nextID = ID+1
+				//Disable everything
+    			$('button').prop('disabled',true).css('opacity',0.5);
+    			$('input').prop('disabled',true).css('opacity',0.5);
+    			$( "div[id*='group']" ).css('opacity',0.5);
+
+
+
+    			//Only turn on what we want
+    			$('#Completion_Code'+nextID).prop('disabled',false).css('opacity',1);
+				$('#Next'+nextID).prop('disabled',false).css('opacity',1)
+				$('#input'+nextID).prop('disabled',false).css('opacity',1);
+				$('#MTurk_ID').prop('disabled',false).css('opacity',1);
+				$('#group'+nextID).css('opacity',1);
+				//document.getElementById("MTurk_ID").disable='false';
+
+				//Demographic questions
+				ShowDemographics()
+
+				//Increment ID
+				ID+=1;
+
+				//When done tell subject to press submit
+				if (ID==2){
+					//$("#Done").html("Thank you for completing all of the tasks. Please submit this HIT.");
+					document.getElementById('Done').style.display = "block";
+					$('button').prop('disabled',false).css('opacity',1);
+					$('#submitButton').prop('disabled',false).css('opacity',1);
+					$('input').prop('disabled',false).css('opacity',1);
+					 //Scroll to bottom
+		        	window.scrollTo(0,document.body.scrollHeight);
+					//document.getElementById("MTurk ID").disable='false';
+				}
+			}
+
+			function validate_and_show_next_button() {
+				//Grab input
+				var input_text = document.getElementById("input"+ID).value
+
+				//ShowNextTask if conditions satisfied
+				if (input_text.length==20) {
+		              	    showNextTask()
+				}
+				
+				else {
+					alert("Please paste correct completion code into text box")
+				}
+			}
+
+			//Functions below check the database for repeated HITs
+			function checkWorkerDB(blockListName, funcForBlocked, thisStudy_HIT,atEndOfTask) {
+			    if (isTurkPrev || !isTurkPrev) {
+			        $.ajax({             
+			            crossDomain: true,
+			            dataType: 'json',
+			            type: 'POST',
+			            url: 'https://apongos.scripts.mit.edu/MTurk/simpleDB_functions/checkWorkerID.php',
+			            data:{'workerID': tester,//GetWorkerId(), 
+			             'excludeBlocks': blockListName}, 
+			             
+			            success: function(data) {
+			            	console.log('GetWorkerId()')
+			             	console.log(tester)
+			            	 console.log('checkWorkerDB')
+			                 console.log(data)
+			                 //check_HIT_already_done(data,thisStudy_HIT) //If Hit already done, this will inform user and block task
+
+			                 if (check_worker_did_larger_study(data,thisStudy_HIT) == false && atEndOfTask==1) {
+			                 	console.log('check_worker_did_larger_study false')
+			                    if (!isTurkPrev){
+			                    	console.log('all inserting workerDB ')
+			                        insertWorkerDB(blockListName, funcForBlocked)
+			                    }
+			                 } 
+
+			                 if (check_worker_did_larger_study(data,thisStudy_HIT) == true && atEndOfTask==0) {
+			                 	console.log('check_worker_did_larger_study true')
+			                    if (!isTurkPrev){
+			                        funcForBlocked([''])
+			                    }
+			                 } 
+			            },
+			            error: function(jx, status, error) {
+			                console.log("Warning: "+jx+ " "+status+ "  " + jx.responseText + "  "+ jx.err)
+			                $('#serverContacted').val(0);
+			            }
+			        });
+			    }
+			}
+
+			function check_HIT_already_done(obj,thisStudy_HIT) {
+			    if (isTurkPrev || !isTurkPrev) {
+			     console.log('check_HIT_already_done')
+			     console.log(obj)
+			     var returnFlag = 0
+			     //For each workerID entry in the database, check if this study has not already been done
+			        for (var workIDRow in obj) {
+			            var tasksStillAvailable = [] //workID might have multiple entries, reset if return flag isn't true
+			            for (fields in obj[workIDRow]) { 
+			            	console.log('fields')
+			            	console.log(fields)
+			                if ( fields.includes("Task_Name")==true ) {
+			                    //If any of the fields are still 0, let subj know they can still do it
+			                    if (fields == thisStudy_HIT && obj[workIDRow][fields] == '1') {
+			                        console.log("This study HIT was already done by workerID: " + tester)
+			                        returnFlag=1
+			                    }
+			                    //Find if there is a zero and append to tasksStillAvailable
+			                    if ( obj[workIDRow][fields] == '0') {
+			                        tasksStillAvailable.push(fields)
+			                        //console.log("pushed this to tasksarray: "+ fields)
+			                    }
+			                }   
+			            }
+			            console.log(window.location.href)
+			            console.log(tester)
+			            //console.log(GetWorkerId()!="NONE")
+			            if (returnFlag == 1 && tester!="NONE") {
+			                //console.log("Sending to exlude function: "+ tasksStillAvailable.toString())
+			                funcForBlocked(tasksStillAvailable) 
+			                break
+			            }
+			        }
+			    }
+			}
+
+			function check_worker_did_larger_study(obj,thisStudy_HIT) {
+			    if ( obj && obj === "null" && obj === "undefined" ){
+			        return false
+			    }
+
+			    if (obj.length === 0) {
+			        return false
+			    }
+			    //console.log('check_worker_did_larger_study')
+			    //console.log(obj)
+			    //For each workerID entry in the database, check if this study has not already been done
+			    for (var workIDRow in obj) {
+			    	console.log(workIDRow)
+			        for (fields in obj[workIDRow]) { 
+			        	//console.log(fields)
+			        	//console.log(thisStudy_HIT)
+			            if ( fields.includes(thisStudy_HIT) == true ) {
+			                //Subject already participated
+			                return true
+			            }
+			            
+			        }  
+			    }
+			    return true
+			}
+
+			function updateWorkerDB() {
+			    if ( !isTurkPrev ) {
+			    	console.log('updateWorkerDB')
+			        $.ajax({             
+			            crossDomain: true,
+			            dataType: 'json',
+			            type: 'POST',
+			            url: 'https://apongos.scripts.mit.edu/MTurk/simpleDB_functions/updateWorkerID.php',
+			            data:{'workerID': tester, 
+			             'excludeBlocks': thisStudy_HIT}, 
+			            success: function(data) {
+			                 console.log(data)
+			            },
+			            error: function(jx, status, error) {
+			                console.log("Warning: "+jx+ " "+status+ "  " + jx.responseText + "  "+ jx.err)
+			                $('#serverContacted').val(0);
+			            }
+			        });
+			    }
+			}
+
+			function insertWorkerDB(blockListName, funcForBlocked) {
+				console.log('insertWorkerDB')
+			    if ( !isTurkPrev ) {
+			        $.ajax({             
+			            crossDomain: true,
+			            dataType: 'json',
+			            type: 'POST',
+			            url: 'https://apongos.scripts.mit.edu/MTurk/simpleDB_functions/insertWorkerID.php',
+			            data:{'workerID': tester,//GetWorkerId(), 
+			             'excludeBlocks': blockListName}, 
+			            success: function(data) {
+			                 console.log(data)
+			            },
+			            error: function(jx, status, error) {
+			                console.log("Warning: "+jx+ " "+status+ "  " + jx.responseText + "  "+ jx.err)
+			                $('#serverContacted').val(0);
+			            }
+			        });
+			    }
+			}
+
+			function funcForBlocked(tasksStillAvailable) {
+			    //Turn permissible array into html string
+			    var tasksString = ''
+			    for (var i in tasksStillAvailable) {
+			        //console.log(i)
+			        tasksString += '<br /><br /> ' + tasksStillAvailable[i]
+			    }
+			    //Account for none
+			    if (tasksStillAvailable === undefined || tasksStillAvailable.length == 0) {
+			        tasksString='None'
+			    }
+			    //Write to HTML
+			    $(".consentPage").hide();
+			    $('body').html("<p>Sorry, you have already completed this HIT. Please return this HIT. Thank you");
+			    $('body').show()
+			}
+
+			function confirmSubmit() {
+			    // Only submits if the form is filled out
+			        //$("#submitButton").attr("disabled", false);
+		        //$("#orderInput").val(order);
+		        //Update remote database with user info
+		        checkWorkerDB(thisStudy_HIT, funcForBlocked, thisStudy_HIT,1)
+		        //insertWorkerDB(allStudies, funcForBlocked)
+
+		        console.log("Yay submitted! You've completed " + thisStudy_HIT); 
+
+		        return true;
+			   
+			}
+
+		</script>
+	</head>
+
+<style>
+	table {
+	  width:100%;
+	}
+	table, th, td {
+	  border: 1px solid black;
+	  border-collapse: collapse;
+	}
+	th, td {
+	  padding: 15px;
+	  text-align: left;
+	}
+	table#t01 tr:nth-child(even) {
+	  background-color: #eee;
+	}
+	table#t01 tr:nth-child(odd) {
+	 background-color: #fff;
+	}
+	table#t01 th {
+	  background-color: black;
+	  color: white;
+	}
+
+	#demog {
+		padding: 50px;
+		font-size: 17px;
+	}
+	#MTID {
+		padding: 25px 50px 10px 50px;
+	}
+
+
+	.wrapper {
+height: 80%;
+width: 100%;
+display: table;
+}
+
+.page {
+display: table-cell;
+vertical-align: middle;
+}
+
+.cell {
+margin: 0 auto;
+padding: 10px;
+width: 850px;
+}
+
+#pagenum {
+text-align: center;
+font-style: italic;
+}
+.disclaimer {
+font-weight: bold;
+color: #555555;
+}
+
+.warning {
+font-weight: bold;
+}
+
+
+.button {
+	background-color: #dddddd;
+	border: 1px solid #888888;
+	color: #000000;
+	font-family: Arial;
+	font-size: 16px;
+	font-weight: bold;
+	margin: 10px;
+	padding: 5px 25px;
+}
+
+.button:disabled {
+	opacity: 0.5;
+}
+
+.speed {
+	width: 500px;
+	border: 2px solid;
+	border-color: #555555;
+	margin: 10px;
+	padding: 10px;
+	text-align:justify;
+	text-justify:inter-word;
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: -moz-none;
+	-ms-user-select: none;
+	user-select: none;
+	cursor: default;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.js_countdown{
+	display:none;
+	padding:1em 0;
+	font-size:2em;
+	position: relative;
+	font-family: Arial, Helvetica, sans-serif;
+	top: -150px;
+}
+
+.timing {
+	/*visibility: hidden;*/
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 200%;
+	position: relative;
+	top: -150px; 
+}
+
+.production_probe, .production_target {
+	position: relative;
+	top: -150px;
+}
+
+.text, .textarea {
+	/*background-color : #eeeeee;*/
+	border: 1px solid #333333;
+	margin-left: 0px;
+	margin-bottom: 5px;
+}
+.text {
+	width: 850px;
+}
+.textarea {
+	height: 200px;
+	width: 600px;
+}
+.trial_textarea {
+	position: absolute;
+    left:50%;
+    margin-left:-300px; /* set to half of width */
+}
+.honorcode {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: -moz-none;
+	-ms-user-select: none;
+	user-select: none;
+	cursor: default;
+}
+
+.problem {
+	-webkit-touch-callout: none;
+	-webkit-user-select: none;
+	-khtml-user-select: none;
+	-moz-user-select: -moz-none;
+	-ms-user-select: none;
+	user-select: none;
+	cursor: default;
+
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 150%;
+	padding: 10px;
+
+}
+
+.timer, .time {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 150%;
+	padding: 10px;
+}
+.time {
+	font-weight: bold;
+}#buttontable {
+}
+
+.math_enabled{
+	background-color: #ffffff;
+}
+
+.math_disabled{
+	background-color: #dddddd;
+
+</style>
+
+
+<body>
+
+	<!-- Instructions -->
+	<h1>
+		
+	</h1>
+
+<head>
+	<title>Phrase Similarity</title>
+	<meta charset="UTF-8">
+<!-- 	<link href="css/langspeed.css" rel="stylesheet" type="text/css">
+	<link href="css/typing.css" rel="stylesheet" type="text/css">
+	<script type="text/javascript" src="js/jquery-2.1.4.min.js"></script> -->
+
+	<!-- prevent backspace from exiting the HIT -->    
+	    <script>
+	$(document).on("keydown", function (e) {
+	   if (e.which === 8 && !$(e.target).is("input, textarea")) {
+	        e.preventDefault();
+	    }
+	else if (event.keyCode == 13) {// controllare
+	event.preventDefault();
+	return false;
+	}
+	});
+	</script>
+</head>
+<body>
+
+<input type="hidden" name="assignmentId" id="assignmentId" value="">
+
+<div class="wrapper">
+<div class="cell">
+
+<h1 align="center">Phrase Similarity</h1>
+
+<div class="disclaimer">This study is being conducted by researchers at the Massachusetts Institute of Technology.</div>
+<br>
+  
+<div class="warning"> <b style="color:red"> Please only complete this HIT "Phrase Similarity" once </b>. You will not be paid for retakes. If you have already completed this HIT or any other version of this HIT and submit it again, all submissions but the first will be rejected, and you will only be paid for the first submission. Having a submission rejected is detrimental to your reputation as a worker, and may prevent you from completing HITs in the future.</div>
+
+<p>This HIT consists of 1 part.  This should take you around 10 minutes. <b>If you cannot dedicate 10 minutes, please don't do this HIT. You will not get paid for an incomplete HIT. </b></p>
+
+<p>To do this HIT, you must be a proficient speaker of English.
+<p>Please do this experiment in one sitting, without taking any breaks, if possible. </p>
+
+<p><b>Technical requirements:</b></p>
+<ul>
+  <li>Please allow permission for Javascript to run on this site and <b style="color:red"> disable any script blockers </b>that are running. If you don't know how to do this, please take this experiment in Chrome incognito mode, which will disable adblockers and custom settings (press Control, Shift and "N" simultaneously).</li>
+</ul>
+<p><b>Consent statement:</b> </p><p>You are participating in a study being performed by cognitive scientists in the MIT Department of Brain and Cognitive Science. If you have questions about this research, please contact Josef Affourtit at jaffourt@mit.edu. Your participation in this research is voluntary. You may decline to answer any or all of the following questions. You may decline further participation, at any time, without adverse consequences. Your anonymity is assured; the researchers who have requested your participation will not receive any personal information about you. Please consent by typing in your Mechanical Turk Worker ID in the box below and then clicking the <q>Task1-Phrase_similarity</q> button below to continue. Otherwise, please exit the study at this time.</p>
+</b>
+
+</div>
+</div>
+
+<!-- <form id="turkSubmit" action="https://workersandbox.mturk.com/mturk/externalSubmit
+" method="post"> -->
+<!-- <form name='mturk_form' method='post' id='mturk_form' action='https://www.mturk.com/mturk/externalSubmit'> <input type='hidden' value='' name='assignmentId' id='assignmentId'/> -->
+<crowd-form answer-format="flatten-objects">
+<!-- <form name='mturk_form' method='post' id='mturk_form' action='https://workersandbox.mturk.com/mturk/externalSubmit
+'>  -->
+<input type="hidden" value="${listnum}" name='listnum'> 
+<div id="demog">
+
+	<p>If you are willing, please answer the background questions below. The only condition for being paid is following the instructions of the HIT (explained below). Payment is NOT dependent on your answers to the following background questions on country, language, sex/gender, ethnicity, and race.</p>
+
+	<p>What country are you from? <input name="country" type="radio" value="USA" /><span class="answertext">USA </span>&nbsp;&nbsp;&nbsp; <input name="country" type="radio" value="CAN" /><span class="answertext">Canada</span>&nbsp; &nbsp; <input name="country" type="radio" value="UK" /><span class="answertext">UK &nbsp; &nbsp; </span><input name="country" type="radio" value="AUS" />Australia / New Zealand &nbsp;&nbsp;&nbsp;&nbsp;<input name="country" type="radio" value="IND" /><span class="answertext">India&nbsp; &nbsp; </span><input name="country" type="radio" value="OTHER" /><span class="answertext">Other&nbsp;&nbsp;</span></p>
+
+	<p>Is English your first language? <input name="English" type="radio" value="yes" /><span class="answertext"> Yes </span>&nbsp;&nbsp;&nbsp;<input name="English" type="radio" value="no" /><span class="answertext">No</span></p>
+
+	<p>Age: <input name="Age" size="20" type="text" /></p>
+
+	<p>Gender: <input name="gender" type="radio" value="Male" /><span class="answertext">Male </span>&nbsp;&nbsp;&nbsp; <input name="gender" type="radio" value="Female" /><span class="answertext">Female</span>&nbsp; &nbsp; <input name="gender" type="radio" value="Other" /><span class="answertext">Other </span></p>
+
+	<p>Ethnicity: <input name="ethnicity" type="radio" value="Hispanic or Latino" /><span class="answertext">Hispanic or Latino </span>&nbsp;&nbsp;&nbsp; <input name="ethnicity" type="radio" value="Not Hispanic or Latino" /><span class="answertext">Not Hispanic or Latino</span></p>
+
+	<p>Race (select one or more): <input name="race" type="checkbox" value="American Indian or Alaska Native" /><span class="answertext">American Indian or Alaska Native </span> &nbsp;&nbsp;&nbsp; <input name="race" type="checkbox" value="Asian" /><span class="answertext">Asian</span>&nbsp; &nbsp;<input name="race" type="checkbox" value="Black or African American" /><span class="answertext">Black or African American </span> &nbsp;&nbsp;&nbsp; <input name="race" type="checkbox" value="Native Hawaiian or Other Pacific Islander" /><span class="answertext">Native Hawaiian or Other Pacific Islander </span> &nbsp;&nbsp;&nbsp; <input name="race" type="checkbox" value="White" /><span class="answertext">White </span> &nbsp;&nbsp;&nbsp; <input name="race" type="checkbox" value="NA" /><span class="answertext">Check here if none of these categories apply </span> &nbsp;&nbsp;&nbsp;</p>
+</div>
+
+<div id="MTID">
+	Please input your <strong>MTurk ID</strong> <br>
+	<input type="text" name="MTurk_ID1" id="MTurk_ID"> <br>
+</div>
+
+	<ul>
+	<!-- List Buttons -->
+	<table id="t1">
+	<div class="group" id="gr1">
+		<tr>	
+			<th> Link to Task </th>
+			<th> Completion Code </th>
+		</tr>
+		<tr>
+			<td>
+				<button type="button" id="Completion_Code1" onclick="window.open('https://evlab.scripts.mit.edu/MTurk/PhraseSimilarity/original/phrase_similarity.html','_blank')"> Task1-Phrase_similarity </button>
+				<div id = "group1">
+					~10 mins
+				</div>
+			</td>
+			<td>
+				<input type="text" id="input1" size="20" name="Completion_Code1">
+				<button type="button" id ="Next1" onclick="validate_and_show_next_button()"> Validate Completion Code </button>
+			</td>
+		</tr>
+	</div>
+
+	<!-- <div class="group" id="group4">
+		<tr>
+		<td>
+			<button type="button" id="Task_Button4" onclick="window.open('http://tedlab.mit.edu/langspeed/tasks/','_blank')"> Task4 and Task5-Langspeed </button>
+			</td>
+		<td>
+			<input type="text" id="input4" size="20" name="Task_Button1">
+			<button type="button" id ="Next4" onclick="validate_and_show_next_button()"> Validate Completion Code </button>
+		</td>
+	</div> -->
+		</ul>
+	</table>	
+		<div name="Done" id="Done" style="display: none;">
+			<h3>Thank you for completing all of the tasks. Please submit this HIT. Feel free to leave any comments on concerns.</h3><p><textarea name='comment' cols='80' rows='3'></textarea></p> 
+			
+			<input type="submit" value="Submit" name="submitButton" id="submitButton" onclick="confirmSubmit()">
+			</crowd-form>
+		</div>
+	</ul>
+	<!-- </form> -->
+
+	</body>
+</html>

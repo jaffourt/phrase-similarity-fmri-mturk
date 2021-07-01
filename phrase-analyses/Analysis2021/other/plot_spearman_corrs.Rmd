@@ -1,0 +1,41 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggpubr)
+library(tidyverse)
+library(readxl)
+
+ind <- read.csv("spearman.csv")
+
+```
+
+
+```{r}
+
+dots<-ind
+bar <- dots %>% group_by(Phrase) %>% summarise(mean_corr=mean(SpearmanCorr), se=sd(SpearmanCorr)/sqrt(length(SpearmanCorr)))
+bar$Phrase <- factor(bar$Phrase, levels= c('BASE','MEANINGPRES','PREPCHANGE','AJCHANGE','NCHANGE'))
+dots$Phrase <- factor(dots$Phrase, levels= c('BASE','MEANINGPRES','PREPCHANGE','AJCHANGE','NCHANGE'))
+
+fig <- ggplot(bar,aes(fill=Phrase,x=Phrase,y=mean_corr)) + 
+  geom_bar(position=position_dodge(.9),stat='identity')  + 
+  geom_point(data=dots, aes(color=Phrase,x=Phrase,y=SpearmanCorr), position=position_dodge(width=.9)) + #color=Transformation,
+  geom_errorbar(aes(ymin=mean_corr-se, ymax=mean_corr+se), width=.2, position=position_dodge(.9)) + ylab("Spearman Correlation to Base Phrase") + 
+  coord_flip() + 
+  theme_pubr() + 
+  ylim(c(0,1)) +
+  scale_fill_manual(values=c("#d9d9d9", "#bdbdbd", "#969696", "#737373", "#525252")) +
+  scale_color_manual(values=c("#d9d9d9", "#bdbdbd", "#969696", "#737373", "#525252")) +
+  theme(legend.position = "none") +
+  xlab(NULL)
+
+fig
+
+ggsave('test2.tiff',fig) 
+
+
+```
+

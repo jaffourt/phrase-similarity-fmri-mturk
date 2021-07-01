@@ -1,0 +1,60 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(ggpubr)
+library(tidyverse)
+library(readxl)
+
+ind <- read.csv("CompLang_GT2a_spatmatch_ES/spm_ss_mROI_data.csv")
+avg <- read.csv("CompLang_GT2a_spatmatch_ES/spm_ss_mROI_data.summaries.EffectSize.csv")
+
+#ind <- read.csv("original/lang/spm_ss_mROI_data.csv")
+#avg <- read.csv("original/lang/spm_ss_mROI_data.summaries.EffectSize.csv")
+
+```
+
+
+```{r}
+#ggplot(n1024_SN_data %>% filter(Lateralization=="left-lat", ROI<=6) %>% group_by(Langloc_Version,Effect),aes(color=Effect)) + geom_point(aes(x=Langloc_Version,y=EffectSize),position=position_dodge(width=-.4)) 
+
+#n1024_SN_data %>% filter(Lateralization=="left-lat", ROI<=6) %>% group_by(Langloc_Version,Effect) %>% summarise(mean=mean(EffectSize))
+#n1024_SN_data %>% filter(Lateralization=="left-lat", ROI<=6) %>% group_by(Langloc_Version,Effect)                                       
+
+dots=bind_rows(ind %>% filter(ROI<=6, ! Effect %in% c('EXPOSURE','RESP', 'EXTRA_ISI')) %>% group_by(Subject, Effect) %>% summarise(mean_phrase=mean(EffectSize)), ind %>% filter(ROI<=6, Effect == 'RESP') %>% group_by(Subject, Effect) %>% summarise(mean_phrase=mean(EffectSize)))
+
+
+dots<-bind_rows(
+  dots %>% filter(Effect %in% c('CAT_BASE','GLASS_BASE','MAN_BASE','PEN_BASE')) %>% summarise(ES_Average = mean(mean_phrase)) %>% add_column(Transformation='BASE'),
+  dots %>% filter(Effect %in% c('CAT_MEANINGPRES','GLASS_MEANINGPRES','MAN_MEANINGPRES','PEN_MEANINGPRES')) %>% summarise(ES_Average = mean(mean_phrase)) %>% add_column(Transformation='MEANINGPRES'),
+  dots %>% filter(Effect %in% c('CAT_PREPCHANGE','GLASS_PREPCHANGE','MAN_PREPCHANGE','PEN_PREPCHANGE')) %>% summarise(ES_Average = mean(mean_phrase)) %>% add_column(Transformation='PREPCHANGE'),
+  dots %>% filter(Effect %in% c('CAT_AJCHANGE','GLASS_AJCHANGE','MAN_AJCHANGE','PEN_AJCHANGE')) %>% summarise(ES_Average = mean(mean_phrase)) %>% add_column(Transformation='AJCHANGE'),
+  dots %>% filter(Effect %in% c('CAT_NCHANGE','GLASS_NCHANGE','MAN_NCHANGE','PEN_NCHANGE')) %>% summarise(ES_Average = mean(mean_phrase)) %>% add_column(Transformation='NCHANGE')
+)
+
+
+bar=dots %>% group_by(Transformation) %>% summarise(roi_mean=mean(ES_Average), se=sd(ES_Average)/sqrt(length(ES_Average)))
+bar$Transformation <- factor(bar$Transformation, levels= c('BASE','MEANINGPRES','PREPCHANGE','AJCHANGE','NCHANGE'))
+dots$Transformation <- factor(dots$Transformation, levels= c('BASE','MEANINGPRES','PREPCHANGE','AJCHANGE','NCHANGE'))
+
+fig <- ggplot(bar,aes(fill=Transformation,x=Transformation,y=roi_mean)) + 
+  geom_bar(position=position_dodge(.9),stat='identity')  + 
+  geom_point(data=dots, aes(color=Transformation,x=Transformation,y=ES_Average), position=position_dodge(width=.9)) + #color=Transformation,
+  geom_errorbar(aes(ymin=roi_mean-se, ymax=roi_mean+se), width=.2, position=position_dodge(.9)) + ylab("BOLD Percent Signal Change") + 
+  coord_flip() + 
+  theme_pubr() + 
+  ylim(c(0,3)) +
+  scale_fill_manual(values=c("#d9d9d9", "#bdbdbd", "#969696", "#737373", "#525252")) +
+  scale_color_manual(values=c("#d9d9d9", "#bdbdbd", "#969696", "#737373", "#525252")) +
+  theme(legend.position = "none") +
+  xlab(NULL)
+
+fig
+
+ggsave('test2.tiff',fig) 
+
+
+```
+

@@ -1,0 +1,130 @@
+---
+title: "Phrase RSA (Gershman & Tenenbaum) analyses"
+output: html_notebook
+---
+
+
+Loading the fMRI data for individual ROIs
+```{r}
+library(lme4)
+library(multcomp)
+library(lmerTest)
+
+d = read.table("/Users/iblank/Desktop/MIT/Experiments/PhraseSimilarity/Analysis/RSA_ROI_results_forR.txt", header=TRUE);
+str(d)
+summary(d)
+
+fROI_crits = unique(d$fROI_Criterion);
+dists = c("conVals_spearman");  # I am not using "conVals_wbcorr"
+systems = c("lang","MD","DMN","vis");
+nROIs = data.frame("lang" = 12, "vis" = 6, "MD" = 20, "DMN" = 12);
+```
+
+
+Build a contrast matrix + test LMER models
+```{r}
+conMat = rbind("Meaning < Prep" = c(0,-1,0,1), "Meaning < Adj" = c(1,-1,0,0), "Meaning < Noun" = c(0,-1,1,0));
+conMat = rbind(conMat, "Prep < Adj" = c(1,0,0,-1), "Prep < Noun" = c(0,0,1,-1));
+conMat = rbind(conMat, "Adj < Noun" = c(-1,0,1,0));
+
+for (distInd in seq(1,length(dists),1)) {
+  dSub1 = subset(d, DistanceType==dists[distInd]);
+  for (critInd in seq(1,length(fROI_crits),1)) {
+    dSub2 = subset(dSub1, fROI_Criterion==fROI_crits[critInd]);
+    for (systemInd in seq(1,length(systems),1)){
+      n = nROIs[[systems[systemInd]]];
+      for (roiInd in seq(1,n,1)) {
+        roiNum = paste("00",toString(roiInd),sep="");
+        roiNum = substr(roiNum,nchar(roiNum)-2,nchar(roiNum));
+        roiName = paste(paste(systems[systemInd],"r",sep="_"),roiNum,sep="");
+        if (roiInd==1) {
+          dSub3 = subset(dSub2, fROI==roiName);
+        } else {
+          dSub3 = rbind(dSub3, subset(dSub2, fROI==roiName));
+        }
+      }
+      
+      m = lmer(Distance ~ 0 + Comparison + (0 + Comparison | fROI) + (0 + Comparison|StimClass) + (0 + Comparison|ID), dSub3, control=lmerControl(optCtrl=list(maxfun=40000)));
+
+      cat(paste(dists[distInd], fROI_crits[critInd], systems[systemInd], sep = ", "), "\n")
+      print(fixef(m))
+      ht = glht(m, linfct = conMat);
+      print(summary(ht, test=adjusted(type="none")))
+    }
+  }
+}
+```
+Per-hemisphere analysis
+Loading the fMRI data for hemisphere-grouped ROIs
+```{r}
+dHemi = subset(d, DistanceType=="conVals_spearman");
+summary(dHemi)
+
+fROI_crits = unique(dHemi$fROI_Criterion);
+systems = c("lang","MD","DMN","vis");
+```
+
+Build a contrast matrix + test LMER models
+```{r}
+conMat = rbind("Meaning < Prep" = c(0,-1,0,1), "Meaning < Adj" = c(1,-1,0,0), "Meaning < Noun" = c(0,-1,1,0));
+conMat = rbind(conMat, "Prep < Adj" = c(1,0,0,-1), "Prep < Noun" = c(0,0,1,-1));
+conMat = rbind(conMat, "Adj < Noun" = c(-1,0,1,0));
+
+for (critInd in seq(1,length(fROI_crits),1)) {
+  dSub = subset(dHemi, fROI_Criterion==fROI_crits[critInd]);
+  for (systemInd in seq(1,length(systems),1)){
+      nameLH = paste(systems[systemInd],"LH",sep="_");
+      nameRH = paste(systems[systemInd],"RH",sep="_");
+        
+      dSub_LH = subset(dSub, fROI==nameLH);
+      m_LH = lmer(Distance ~ 0 + Comparison + (0 + Comparison|StimClass) + (0 + Comparison|ID), dSub_LH, control=lmerControl(optCtrl=list(maxfun=40000)));
+    
+    cat(paste(fROI_crits[critInd], nameLH, sep = ", "), "\n")
+    print(fixef(m_LH))
+    ht_LH = glht(m_LH, linfct = conMat);
+    print(summary(ht_LH, test=adjusted(type="none")))
+    
+    
+    dSub_RH = subset(dSub, fROI==nameRH);
+    m_RH = lmer(Distance ~ 0 + Comparison + (0 + Comparison|StimClass) + (0 + Comparison|ID), dSub_RH, control=lmerControl(optCtrl=list(maxfun=40000)));
+    
+    cat(paste(fROI_crits[critInd], nameRH, sep = ", "), "\n")
+    print(fixef(m_RH))
+    ht_RH = glht(m_RH, linfct = conMat);
+    print(summary(ht_RH, test=adjusted(type="none")))
+  }
+}
+```
+
+Reliable-voxels analysis
+Loading the fMRI data for RSA in reliable voxels
+```{r}
+d = read.table('/Users/iblank/Desktop/MIT/Experiments/PhraseRSA/Analysis/RSA_reliableVoxels_results_forR.txt', header=TRUE);
+str(d)
+summary(d)
+
+d = subset(d, DistanceType=="conVals_spearman");  # this subject had a near-singular convariance matrix for Fisher linear discriminant
+summary(d)
+
+relMeas = unique(d$reliabilityMeasure);
+nVox = unique(d$nVoxels)
+```
+
+Build a contrast matrix + test LMER models
+```{r}
+conMat = rbind("Meaning < Prep" = c(0,-1,0,1), "Meaning < Adj" = c(1,-1,0,0), "Meaning < Noun" = c(0,-1,1,0));
+conMat = rbind(conMat, "Prep < Adj" = c(1,0,0,-1), "Prep < Noun" = c(0,0,1,-1));
+conMat = rbind(conMat, "Adj < Noun" = c(-1,0,1,0));
+
+for (measInd in seq(1,length(relMeas),1)) {
+  dSub = subset(d, reliabilityMeasure==relMeas[measInd]);
+  for (nInd in seq(1,length(nVox),1)){
+    dSub2 = subset(dSub, nVoxels==nVox[nInd]);
+    m = lmer(Distance ~ 0 + Comparison + (0 + Comparison|StimClass) + (0 + Comparison|ID), dSub2, control=lmerControl(optCtrl=list(maxfun=40000)));
+    cat(paste(relMeas[measInd], nVox[nInd], sep = ", "))
+    print(fixef(m))
+    ht = glht(m, linfct = conMat);
+    print(summary(ht, test=adjusted(type="none")))
+  }
+}
+```

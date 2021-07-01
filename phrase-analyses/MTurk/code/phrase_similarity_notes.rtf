@@ -1,0 +1,52 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1671\cocoasubrtf500
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww13860\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 The purpose of the Gersham/Tenenbaum paper was to compare the ability to evaluate the semantic meaning of a sentence between human participants and several computational models.\
+\
+	Q: What are the computational models used? What is a word/phrase vector?\
+	Q: How was the model trained/tested, and then applied to the transformed word/phrase v	ectors?\
+\
+The sentences presented to the subjects were transformed, and then the participant assigned a \'93dissimilarity\'94 to the transformed sentence, thus a sentence with a very different semantic meaning would be assigned the largest dissimilarity and thus the transformations could be ranked. The computational model failed to consistently rank the transformations correctly, though human subjects did this easily.\
+\
+All of this was presented on MTurk, and the subjects ranked them via a webpage.\
+\
+	Q: Why are we adding an MRI to the project? Does this add another depth to the data? If the 	computational models were used to rank dissimilarity (aka Behavioral data), then how will we 	apply the computational models to fMRI data? OR have we changed the question we are trying 	to answer?\
+\
+	Q: What is the disadvantage of showing the base sentence with all the transformations at 	once?\
+\
+	Q: Moving forward what modeling strategies would we change? The computational models?\
+\
+	MQ: Do you have suggestions on what I should start to work on\
+\
+TRY:\
+\
+Base + transformation \
+If in the first few trials, the order ranking should be correct -> MTurk\
+\
+Spearman Correllation matrices ** this doesn\'92t make sense, why?\
+	- maybe a bug, or first level modeling\
+	- this is the first thing to investigate BEFORE all the first level modeling\
+\
+fMRI\
+1. modeling the runs (20 regressors rather than 2 for langloc)\
+2. define ROIs\
+3. extract activations from conditions in sentences, compute correlation between sentences\
+4. add a regressor for \'93cats\'94 and then you can remove the strong signal from each activation about \'93cats\'94 and you might be left with just the differences in the semantics of the sentence about \'93cats\'94\
+\
+BEHAVIORAL\
+setting up MTurk study\
+\
+replicate basic phrase similarity task randomized order of trials and 4 transformations\
+pairs shown, but with each transformation at least n number of trials before seeing the same base sentence (turkolyzer)\
+	with 10 identical sentence pairs not from 30 base sentence set\
+50 participants each\
+\
+\
+\
+\
+\
+}
